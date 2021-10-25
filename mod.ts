@@ -85,7 +85,13 @@ export async function joinPageRoom(project: string, title: string) {
   async function update(text: string, lineId: string) {
     await pushWithRetry([{ _update: lineId, lines: { text } }]);
   }
-  return { insert, remove, update, listenPageUpdate: () => response("commit") };
+  return {
+    insert,
+    remove,
+    update,
+    listenPageUpdate: () => response("commit"),
+    cleanup: () => io.disconnect(),
+  };
 }
 export async function deletePage(project: string, title: string) {
   const [{ pageId, commitId: initialCommitId, persistent }, projectId, userId] =
@@ -129,6 +135,7 @@ export async function deletePage(project: string, title: string) {
     }
     throw Error("Faild to retry pushing.");
   }
+  io.disconnect();
 }
 
 export async function* listenStreamCommit(project: string) {
@@ -140,7 +147,13 @@ export async function* listenStreamCommit(project: string) {
     method: "room:join",
     data: { projectId, pageId: null, projectUpdatesStream: true },
   });
-  yield* response("projectUpdatesStream:commit");
+  try {
+    for await (const data of response("projectUpdatesStream:commit")) {
+      yield data;
+    }
+  } finally {
+    io.disconnect();
+  }
 }
 export async function* listenStreamEvent(project: string) {
   const projectId = await getProjectId(project);
@@ -151,7 +164,13 @@ export async function* listenStreamEvent(project: string) {
     method: "room:join",
     data: { projectId, pageId: null, projectUpdatesStream: true },
   });
-  yield* response("projectUpdatesStream:event");
+  try {
+    for await (const data of response("projectUpdatesStream:event")) {
+      yield data;
+    }
+  } finally {
+    io.disconnect();
+  }
 }
 
 type RequestFunc = ReturnType<typeof wrap>["request"];

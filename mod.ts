@@ -108,7 +108,7 @@ export async function deletePage(project: string, title: string) {
   const { request } = wrap(io);
 
   try {
-    const res = await pushCommit(request, [{ delete: true }], {
+    const res = await pushCommit(request, [{ deleted: true }], {
       parentId,
       projectId,
       pageId,
@@ -120,7 +120,7 @@ export async function deletePage(project: string, title: string) {
     for (let i = 0; i < 3; i++) {
       try {
         parentId = (await getPageIdAndCommitId(project, title)).commitId;
-        const res = await pushCommit(request, [{ delete: true }], {
+        const res = await pushCommit(request, [{ deleted: true }], {
           parentId,
           projectId,
           pageId,

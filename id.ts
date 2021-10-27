@@ -20,14 +20,23 @@ export function createNewLineId(userId: string) {
 }
 
 export async function getPageIdAndCommitId(project: string, title: string) {
-  const res = await fetch(`https://scrapbox.io/api/pages/${project}/${title}`);
+  const res = await fetch(
+    `https://scrapbox.io/api/pages/${project}/${
+      encodeURIComponent(toTitleLc(title))
+    }`,
+  );
   const json = (await res.json()) as Page;
   const pageId = json.id;
   const commitId = json.commitId;
   return { pageId, commitId, persistent: json.persistent };
 }
+
 export async function getProjectId(project: string) {
   const res = await fetch(`https://scrapbox.io/api/projects/${project}`);
   const json = (await res.json()) as MemberProject;
   return json.id;
+}
+
+function toTitleLc(title: string) {
+  return title.replaceAll(" ", "_").toLowerCase();
 }

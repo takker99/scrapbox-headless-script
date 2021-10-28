@@ -30,7 +30,7 @@ export async function joinPageRoom(project: string, title: string) {
     }
   })();
 
-  async function pushWithRetry(changes: Change[], retry = 3) {
+  async function push(changes: Change[], retry = 3) {
     // 空ページのときはtitleを先にcommitしておく
     if (!created) {
       const res = await pushCommit(request, [{ title }], {
@@ -42,53 +42,28 @@ export async function joinPageRoom(project: string, title: string) {
       parentId = res.commitId;
       created = true;
     }
-    try {
-      const res = await pushCommit(request, changes, {
-        parentId,
-        projectId,
-        pageId,
-        userId,
-      });
-      parentId = res.commitId;
-    } catch (_e) {
-      console.log("Faild to push a commit. Retry after pulling new commits");
-      for (let i = 0; i < retry; i++) {
-        try {
-          parentId = (await getPageIdAndCommitId(project, title)).commitId;
-          const res = await pushCommit(request, changes, {
-            parentId,
-            projectId,
-            pageId,
-            userId,
-          });
-          parentId = res.commitId;
-          console.log("Success in retrying");
-          break;
-        } catch (_e) {
-          continue;
-        }
-      }
-      throw Error("Faild to retry pushing.");
-    }
+    parentId = await pushWithRetry(request, changes, {
+      parentId,
+      projectId,
+      pageId,
+      userId,
+      project,
+      title,
+      retry,
+    });
   }
 
-  async function insert(text: string, beforeId = "_end") {
-    const changes = text.split(/\n|\r\n/).map((line) => ({
-      _insert: beforeId,
-      lines: { text: line, id: createNewLineId(userId) },
-    }));
-    await pushWithRetry(changes);
-  }
-  async function remove(lineId: string) {
-    await pushWithRetry([{ _delete: lineId, lines: -1 }]);
-  }
-  async function update(text: string, lineId: string) {
-    await pushWithRetry([{ _update: lineId, lines: { text } }]);
-  }
   return {
-    insert,
-    remove,
-    update,
+    async insert(text: string, beforeId = "_end") {
+      const changes = text.split(/\n|\r\n/).map((line) => ({
+        _insert: beforeId,
+        lines: { text: line, id: createNewLineId(userId) },
+      }));
+      await push(changes);
+    },
+    remove: (lineId: string) => push([{ _delete: lineId, lines: -1 }]),
+    update: (text: string, lineId: string) =>
+      push([{ _update: lineId, lines: { text } }]),
     listenPageUpdate: () => response("commit"),
     cleanup: () => io.disconnect(),
   };
@@ -108,34 +83,17 @@ export async function deletePage(project: string, title: string) {
   const { request } = wrap(io);
 
   try {
-    const res = await pushCommit(request, [{ deleted: true }], {
-      parentId,
+    parentId = await pushWithRetry(request, [{ deleted: true }], {
       projectId,
       pageId,
+      parentId,
       userId,
+      project,
+      title,
     });
-    parentId = res.commitId;
-  } catch (_e) {
-    console.log("Faild to push a commit. Retry after pulling new commits");
-    for (let i = 0; i < 3; i++) {
-      try {
-        parentId = (await getPageIdAndCommitId(project, title)).commitId;
-        const res = await pushCommit(request, [{ deleted: true }], {
-          parentId,
-          projectId,
-          pageId,
-          userId,
-        });
-        parentId = res.commitId;
-        console.log("Success in retrying");
-        break;
-      } catch (_e) {
-        continue;
-      }
-    }
-    throw Error("Faild to retry pushing.");
+  } finally {
+    io.disconnect();
   }
-  io.disconnect();
 }
 
 export async function* listenStreamCommit(project: string) {
@@ -200,4 +158,46 @@ async function pushCommit(
     },
   });
   return res as { commitId: string };
+}
+
+async function pushWithRetry(
+  request: RequestFunc,
+  changes: Change[] | [Delete] | [Pin],
+  { projectId, pageId, userId, parentId, project, title, retry = 3 }:
+    & PushCommitInit
+    & {
+      project: string;
+      title: string;
+      retry?: number;
+    },
+) {
+  try {
+    const res = await pushCommit(request, changes, {
+      parentId,
+      projectId,
+      pageId,
+      userId,
+    });
+    parentId = res.commitId;
+  } catch (_e) {
+    console.log("Faild to push a commit. Retry after pulling new commits");
+    for (let i = 0; i < retry; i++) {
+      try {
+        parentId = (await getPageIdAndCommitId(project, title)).commitId;
+        const res = await pushCommit(request, changes, {
+          parentId,
+          projectId,
+          pageId,
+          userId,
+        });
+        parentId = res.commitId;
+        console.log("Success in retrying");
+        break;
+      } catch (_e) {
+        continue;
+      }
+    }
+    throw Error("Faild to retry pushing.");
+  }
+  return parentId;
 }

@@ -54,7 +54,7 @@ export async function joinPageRoom(project: string, title: string) {
   }
 
   return {
-    async insert(text: string, beforeId = "_end") {
+    insert: async (text: string, beforeId = "_end") => {
       const changes = text.split(/\n|\r\n/).map((line) => ({
         _insert: beforeId,
         lines: { text: line, id: createNewLineId(userId) },

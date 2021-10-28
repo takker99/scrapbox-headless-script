@@ -153,6 +153,7 @@ async function pushCommit(
   changes: Change[] | [Delete] | [Pin],
   { projectId, pageId, userId, parentId }: PushCommitInit,
 ) {
+  if (changes.length === 0) return { commitId: parentId };
   const res = await request("socket.io-request", {
     method: "commit",
     data: {

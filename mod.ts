@@ -5,6 +5,9 @@ import {
   getProjectId,
   getUserId,
 } from "./id.ts";
+import { getPage } from "./fetch.ts";
+import { diffToChanges } from "./patch.ts";
+import type { Line } from "./deps/scrapbox.ts";
 
 export async function joinPageRoom(project: string, title: string) {
   const [{ pageId, commitId: initialCommitId, persistent }, projectId, userId] =
@@ -64,6 +67,12 @@ export async function joinPageRoom(project: string, title: string) {
     remove: (lineId: string) => push([{ _delete: lineId, lines: -1 }]),
     update: (text: string, lineId: string) =>
       push([{ _update: lineId, lines: { text } }]),
+    patch: async (update: (before: Line[]) => string[]) => {
+      const oldLines = (await getPage(project, title)).lines;
+      const newLines = update(oldLines);
+      const changes = [...diffToChanges(oldLines, newLines, { userId })];
+      await push(changes);
+    },
     listenPageUpdate: () => response("commit"),
     cleanup: () => io.disconnect(),
   };

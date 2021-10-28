@@ -1,4 +1,13 @@
-import { Change, Delete, Pin, socketIO, wrap } from "./deps/socket.ts";
+import {
+  Change,
+  CommitNotification,
+  Delete,
+  Pin,
+  ProjectUpdatesStreamCommit,
+  ProjectUpdatesStreamEvent,
+  socketIO,
+  wrap,
+} from "./deps/socket.ts";
 import {
   createNewLineId,
   getPageIdAndCommitId,
@@ -8,8 +17,24 @@ import {
 import { getPage } from "./fetch.ts";
 import { diffToChanges } from "./patch.ts";
 import type { Line } from "./deps/scrapbox.ts";
+export type {
+  CommitNotification,
+  ProjectUpdatesStreamCommit,
+  ProjectUpdatesStreamEvent,
+};
 
-export async function joinPageRoom(project: string, title: string) {
+export interface JoinPageRoomResult {
+  insert: (text: string, beforeId: string) => Promise<void>;
+  remove: (lineId: string) => Promise<void>;
+  update: (text: string, lineId: string) => Promise<void>;
+  patch: (update: (before: Line[]) => string[]) => Promise<void>;
+  listenPageUpdate: () => AsyncGenerator<CommitNotification, void, unknown>;
+  cleanup: () => void;
+}
+export async function joinPageRoom(
+  project: string,
+  title: string,
+): Promise<JoinPageRoomResult> {
   const [{ pageId, commitId: initialCommitId, persistent }, projectId, userId] =
     await Promise.all([
       getPageIdAndCommitId(project, title),
@@ -74,10 +99,15 @@ export async function joinPageRoom(project: string, title: string) {
       await push(changes);
     },
     listenPageUpdate: () => response("commit"),
-    cleanup: () => io.disconnect(),
+    cleanup: () => {
+      io.disconnect();
+    },
   };
 }
-export async function deletePage(project: string, title: string) {
+export async function deletePage(
+  project: string,
+  title: string,
+): Promise<void> {
   const [{ pageId, commitId: initialCommitId, persistent }, projectId, userId] =
     await Promise.all([
       getPageIdAndCommitId(project, title),
@@ -105,7 +135,9 @@ export async function deletePage(project: string, title: string) {
   }
 }
 
-export async function* listenStreamCommit(project: string) {
+export async function* listenStreamCommit(
+  project: string,
+): AsyncGenerator<ProjectUpdatesStreamCommit, void, unknown> {
   const projectId = await getProjectId(project);
 
   const io = await socketIO();
@@ -122,7 +154,9 @@ export async function* listenStreamCommit(project: string) {
     io.disconnect();
   }
 }
-export async function* listenStreamEvent(project: string) {
+export async function* listenStreamEvent(
+  project: string,
+): AsyncGenerator<ProjectUpdatesStreamEvent, void, unknown> {
   const projectId = await getProjectId(project);
 
   const io = await socketIO();

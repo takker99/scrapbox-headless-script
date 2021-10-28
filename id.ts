@@ -1,4 +1,5 @@
 import type { MemberProject, Page, UserResponse } from "./deps/scrapbox.ts";
+import { getPage } from "./fetch.ts";
 
 export async function getUserId() {
   const res = await fetch("https://scrapbox.io/api/users/me");
@@ -20,23 +21,12 @@ export function createNewLineId(userId: string) {
 }
 
 export async function getPageIdAndCommitId(project: string, title: string) {
-  const res = await fetch(
-    `https://scrapbox.io/api/pages/${project}/${
-      encodeURIComponent(toTitleLc(title))
-    }`,
-  );
-  const json = (await res.json()) as Page;
-  const pageId = json.id;
-  const commitId = json.commitId;
-  return { pageId, commitId, persistent: json.persistent };
+  const { id, commitId, persistent } = await getPage(project, title);
+  return { pageId: id, commitId, persistent };
 }
 
 export async function getProjectId(project: string) {
   const res = await fetch(`https://scrapbox.io/api/projects/${project}`);
   const json = (await res.json()) as MemberProject;
   return json.id;
-}
-
-function toTitleLc(title: string) {
-  return title.replaceAll(" ", "_").toLowerCase();
 }

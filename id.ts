@@ -1,4 +1,4 @@
-import type { MemberProject, Page, UserResponse } from "./deps/scrapbox.ts";
+import type { MemberProject, UserResponse } from "./deps/scrapbox.ts";
 import { getPage } from "./fetch.ts";
 
 export async function getUserId() {

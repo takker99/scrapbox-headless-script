@@ -161,14 +161,13 @@ Deno.test("toExtendedChanges()", async (t) => {
         { value: "eee", type: "added" },
       ];
       const after: ExtendedChange<string>[] = [
-        { value: "111", type: "added" },
-        { value: "aaa", oldValue: "bbb", type: "replaced" },
+        { value: "111", oldValue: "bbb", type: "replaced" },
+        { value: "aaa", oldValue: "fff", type: "replaced" },
+        { value: "222", oldValue: "ggg", type: "replaced" },
+        { value: "eee", oldValue: "ggg", type: "replaced" },
         { value: "222", oldValue: "fff", type: "replaced" },
         { value: "eee", oldValue: "ggg", type: "replaced" },
         { value: "222", type: "added" },
-        { value: "eee", oldValue: "ggg", type: "replaced" },
-        { value: "222", oldValue: "fff", type: "replaced" },
-        { value: "ggg", type: "deleted" },
         { value: "222", type: "added" },
         { value: "eee", type: "added" },
       ];
@@ -207,15 +206,15 @@ Deno.test("toExtendedChanges()", async (t) => {
         { value: "222", type: "added" },
       ];
       const after: ExtendedChange<string>[] = [
-        { value: "111", type: "added" },
-        { value: "aaa", oldValue: "bbb", type: "replaced" },
+        { value: "111", oldValue: "bbb", type: "replaced" },
+        { value: "aaa", type: "added" },
         { value: "ccc", type: "common" },
         { value: "ddd", type: "common" },
         { value: "222", oldValue: "fff", type: "replaced" },
         { value: "eee", oldValue: "ggg", type: "replaced" },
         { value: "ddd", type: "common" },
-        { value: "222", type: "added" },
-        { value: "eee", oldValue: "ggg", type: "replaced" },
+        { value: "222", oldValue: "ggg", type: "replaced" },
+        { value: "eee", type: "added" },
         { value: "ddd", type: "common" },
         { value: "222", oldValue: "fff", type: "replaced" },
         { value: "ggg", type: "deleted" },

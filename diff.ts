@@ -119,73 +119,61 @@ export function diff<T>(
 export function* toExtendedChanges<T>(
   changes: Iterable<Change<T>>,
 ): Generator<ExtendedChange<T>, void, unknown> {
-  let stack0 = [] as (Added<T> | Deleted<T>)[];
-  let stack1 = [] as (Added<T> | Deleted<T>)[];
+  let addedList = [] as Added<T>[];
+  let deletedList = [] as Deleted<T>[];
 
   function* flush() {
-    if (stack0.length > stack1.length) {
-      const delta = stack0.length - stack1.length;
-      for (let i = 0; i < delta; i++) {
-        yield stack0[i];
-      }
-      for (let i = 0; i < stack1.length; i++) {
+    if (addedList.length > deletedList.length) {
+      for (let i = 0; i < deletedList.length; i++) {
         yield makeReplaced(
-          stack0[i + delta],
-          stack1[i],
+          addedList[i],
+          deletedList[i],
         );
+      }
+      for (let i = deletedList.length; i < addedList.length; i++) {
+        yield addedList[i];
       }
     } else {
-      for (let i = 0; i < stack0.length; i++) {
+      for (let i = 0; i < addedList.length; i++) {
         yield makeReplaced(
-          stack0[i],
-          stack1[i],
+          addedList[i],
+          deletedList[i],
         );
       }
-      for (let i = stack0.length; i < stack1.length; i++) {
-        yield stack1[i];
+      for (let i = addedList.length; i < deletedList.length; i++) {
+        yield deletedList[i];
       }
     }
-    stack0 = [];
-    stack1 = [];
+    addedList = [];
+    deletedList = [];
   }
 
   for (const change of changes) {
-    if (change.type === "common") {
-      yield* flush();
-      yield change;
-      continue;
-    }
-    if (stack0.length === 0) {
-      stack0.push(change);
-      continue;
-    }
-    if (stack0[stack0.length - 1].type === change.type) {
-      if (stack1.length > 0) {
+    switch (change.type) {
+      case "added":
+        addedList.push(change);
+        break;
+      case "deleted":
+        deletedList.push(change);
+        break;
+      case "common":
         yield* flush();
-      }
-      stack0.push(change);
-      continue;
+        yield change;
+        break;
     }
-    stack1.push(change);
   }
   yield* flush();
 }
 
 function makeReplaced<T>(
-  left: Added<T> | Deleted<T>,
-  right: Added<T> | Deleted<T>,
+  left: Added<T>,
+  right: Deleted<T>,
 ): Replaced<T> {
-  return left.type === "added"
-    ? {
-      value: left.value,
-      oldValue: right.value,
-      type: "replaced",
-    }
-    : {
-      value: right.value,
-      oldValue: left.value,
-      type: "replaced",
-    };
+  return {
+    value: left.value,
+    oldValue: right.value,
+    type: "replaced",
+  };
 }
 
 function* reverse<T>(list: ArrayLike<T>) {

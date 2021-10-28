@@ -1,6 +1,10 @@
 import { diff, toExtendedChanges } from "./diff.ts";
-import { Line, Page } from "./deps/scrapbox.ts";
-import { Change } from "./deps/socket.ts";
+import { Line } from "./deps/scrapbox.ts";
+import type {
+  DeleteCommit,
+  InsertCommit,
+  UpdateCommit,
+} from "./deps/socket.ts";
 import { createNewLineId } from "./id.ts";
 
 type Options = {
@@ -10,7 +14,7 @@ export function* diffToChanges(
   left: Omit<Line, "userId" | "updated" | "created">[],
   right: string[],
   { userId }: Options,
-): Generator<Change, void, unknown> {
+): Generator<DeleteCommit | InsertCommit | UpdateCommit, void, unknown> {
   const { buildSES } = diff(
     left.map(({ text }) => text),
     right,
@@ -18,9 +22,6 @@ export function* diffToChanges(
   let lineNo = 0;
   let lineId = left[0].id;
   for (const change of toExtendedChanges(buildSES())) {
-    if (change.type !== "added" && lineId === "_end") {
-      throw Error('lineId cannot be "_end" yet');
-    }
     switch (change.type) {
       case "added":
         yield {
@@ -30,8 +31,7 @@ export function* diffToChanges(
             text: change.value,
           },
         };
-        break;
-
+        continue;
       case "deleted":
         yield {
           _delete: lineId,

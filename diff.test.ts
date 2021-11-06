@@ -16,83 +16,29 @@ Deno.test("diff()", async (t) => {
   await t.step("string", async ({ step }) => {
     await step("kitten→sitting", () => {
       assertEquals([...diff("kitten", "sitting").buildSES()], [
-        {
-          value: "s",
-          type: "added",
-        },
-        {
-          value: "k",
-          type: "deleted",
-        },
-        {
-          value: "i",
-          type: "common",
-        },
-        {
-          value: "t",
-          type: "common",
-        },
-        {
-          value: "t",
-          type: "common",
-        },
-        {
-          value: "i",
-          type: "added",
-        },
-        {
-          value: "e",
-          type: "deleted",
-        },
-        {
-          value: "n",
-          type: "common",
-        },
-        {
-          value: "g",
-          type: "added",
-        },
+        { value: "s", type: "added" },
+        { value: "k", type: "deleted" },
+        { value: "i", type: "common" },
+        { value: "t", type: "common" },
+        { value: "t", type: "common" },
+        { value: "i", type: "added" },
+        { value: "e", type: "deleted" },
+        { value: "n", type: "common" },
+        { value: "g", type: "added" },
       ]);
     });
 
     await step("sitting→kitten", () => {
       assertEquals([...diff("sitting", "kitten").buildSES()], [
-        {
-          value: "s",
-          type: "deleted",
-        },
-        {
-          value: "k",
-          type: "added",
-        },
-        {
-          value: "i",
-          type: "common",
-        },
-        {
-          value: "t",
-          type: "common",
-        },
-        {
-          value: "t",
-          type: "common",
-        },
-        {
-          value: "i",
-          type: "deleted",
-        },
-        {
-          value: "e",
-          type: "added",
-        },
-        {
-          value: "n",
-          type: "common",
-        },
-        {
-          value: "g",
-          type: "deleted",
-        },
+        { value: "s", type: "deleted" },
+        { value: "k", type: "added" },
+        { value: "i", type: "common" },
+        { value: "t", type: "common" },
+        { value: "t", type: "common" },
+        { value: "i", type: "deleted" },
+        { value: "e", type: "added" },
+        { value: "n", type: "common" },
+        { value: "g", type: "deleted" },
       ]);
     });
   });

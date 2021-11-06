@@ -14,8 +14,8 @@ Deno.test("diff()", async (t) => {
     });
   });
   await t.step("string", async ({ step }) => {
-    await step("kitten→sitting", () => {
-      assertEquals([...diff("kitten", "sitting").buildSES()], [
+    const diffData: [string, string, Change<string>[]][] = [
+      ["kitten", "sitting", [
         { value: "s", type: "added" },
         { value: "k", type: "deleted" },
         { value: "i", type: "common" },
@@ -25,11 +25,8 @@ Deno.test("diff()", async (t) => {
         { value: "e", type: "deleted" },
         { value: "n", type: "common" },
         { value: "g", type: "added" },
-      ]);
-    });
-
-    await step("sitting→kitten", () => {
-      assertEquals([...diff("sitting", "kitten").buildSES()], [
+      ]],
+      ["sitting", "kitten", [
         { value: "s", type: "deleted" },
         { value: "k", type: "added" },
         { value: "i", type: "common" },
@@ -39,8 +36,14 @@ Deno.test("diff()", async (t) => {
         { value: "e", type: "added" },
         { value: "n", type: "common" },
         { value: "g", type: "deleted" },
-      ]);
-    });
+      ]],
+    ];
+    for (const [before, after, changes] of diffData) {
+      await step(
+        `${before}->${after}`,
+        () => assertEquals([...diff(before, after).buildSES()], changes),
+      );
+    }
   });
 });
 

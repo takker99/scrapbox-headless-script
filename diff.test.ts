@@ -2,7 +2,7 @@
 import { Change, diff, ExtendedChange, toExtendedChanges } from "./diff.ts";
 import { assertEquals, assertStrictEquals } from "./deps/testing.ts";
 
-Deno.test("diff", async (t) => {
+Deno.test("diff()", async (t) => {
   await t.step("check variables", async ({ step }) => {
     await step("return arguments", () => {
       assertEquals(diff("aaa", "bbbb").from, "aaa");

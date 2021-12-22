@@ -109,9 +109,8 @@ export async function joinPageRoom(
     update: (text: string, lineId: string) =>
       push([{ _update: lineId, lines: { text } }]),
     patch: async (update: (before: Line[]) => string[]) => {
-      const oldLines = (await getPage(project, title)).lines;
-      const newLines = update(oldLines);
-      const changes = [...diffToChanges(oldLines, newLines, { userId })];
+      const newLines = update(lines);
+      const changes = [...diffToChanges(lines, newLines, { userId })];
       await push(changes);
     },
     listenPageUpdate: () => response("commit"),

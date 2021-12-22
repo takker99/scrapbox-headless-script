@@ -2,12 +2,18 @@ import type { CommitNotification } from "./deps/socket.ts";
 import type { Line } from "./deps/scrapbox.ts";
 import { getUnixTimeFromId } from "./id.ts";
 
+export interface ApplyCommitProp {
+  /** changesの作成日時
+   *
+   * UnixTimeか、UnixTimeを含んだidを渡す
+   */
+  updated: number | string;
+  userId: string;
+}
 export function applyCommit(
   lines: Line[],
-  { id, changes, userId }: Pick<
-    CommitNotification,
-    "id" | "changes" | "userId"
-  >,
+  changes: CommitNotification["changes"],
+  { updated, userId }: ApplyCommitProp,
 ) {
   const getPos = (lineId: string) => {
     const position = lines.findIndex(({ id }) => id === lineId);
@@ -35,7 +41,9 @@ export function applyCommit(
     } else if ("_update" in change) {
       const position = getPos(change._update);
       lines[position].text = change.lines.text;
-      lines[position].updated = getUnixTimeFromId(id);
+      lines[position].updated = typeof updated === "string"
+        ? getUnixTimeFromId(updated)
+        : updated;
     } else if ("_delete" in change) {
       lines.splice(getPos(change._delete), 1);
     }

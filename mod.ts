@@ -58,16 +58,18 @@ export async function joinPageRoom(
 
   // subscribe the latest commit id
   (async () => {
-    for await (const commit of response("commit")) {
-      parentId = commit.id;
-      lines = applyCommit(lines, commit);
+    for await (const { id, changes } of response("commit")) {
+      parentId = id;
+      lines = applyCommit(lines, changes, { updated: id, userId });
     }
   })();
 
   async function push(changes: Change[], retry = 3) {
     // 変更後のlinesを計算する
-    const dummyId = createNewLineId(userId);
-    const changedLines = applyCommit(lines, { id: dummyId, changes, userId });
+    const changedLines = applyCommit(lines, changes, {
+      updated: Math.round(new Date().getTime() / 1000),
+      userId,
+    });
     // タイトルの変更チェック
     // 空ページの場合もタイトル変更commitを入れる
     if (lines[0].text !== changedLines[0].text || !created) {

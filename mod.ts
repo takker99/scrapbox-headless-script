@@ -92,7 +92,9 @@ export async function joinPageRoom(
       title,
       retry,
     });
+    // pushに成功したら、localにも変更を反映する
     created = true;
+    lines = changedLines;
   }
 
   return {

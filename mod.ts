@@ -16,6 +16,7 @@ import {
 } from "./id.ts";
 import { getPage } from "./fetch.ts";
 import { diffToChanges } from "./patch.ts";
+import { applyCommit } from "./applyCommit.ts";
 import type { Line } from "./deps/scrapbox.ts";
 export type {
   CommitNotification,
@@ -35,14 +36,18 @@ export async function joinPageRoom(
   project: string,
   title: string,
 ): Promise<JoinPageRoomResult> {
-  const [{ pageId, commitId: initialCommitId, persistent }, projectId, userId] =
-    await Promise.all([
-      getPageIdAndCommitId(project, title),
-      getProjectId(project),
-      getUserId(),
-    ]);
-  let parentId = initialCommitId;
+  const [
+    { commitId, lines: _lines, id: pageId, persistent },
+    projectId,
+    userId,
+  ] = await Promise.all([
+    getPage(project, title),
+    getProjectId(project),
+    getUserId(),
+  ]);
+  let parentId = commitId;
   let created = persistent;
+  let lines = _lines;
 
   const io = await socketIO();
   const { request, response } = wrap(io);
@@ -53,23 +58,29 @@ export async function joinPageRoom(
 
   // subscribe the latest commit id
   (async () => {
-    for await (const { id } of response("commit")) {
-      parentId = id;
+    for await (const commit of response("commit")) {
+      parentId = commit.id;
+      lines = applyCommit(lines, commit);
     }
   })();
 
   async function push(changes: Change[], retry = 3) {
-    // 空ページのときはtitleを先にcommitしておく
-    if (!created) {
-      const res = await pushCommit(request, [{ title }], {
-        parentId,
-        projectId,
-        pageId,
-        userId,
-      });
-      parentId = res.commitId;
-      created = true;
+    // 変更後のlinesを計算する
+    const dummyId = createNewLineId(userId);
+    const changedLines = applyCommit(lines, { id: dummyId, changes, userId });
+    // タイトルの変更チェック
+    // 空ページの場合もタイトル変更commitを入れる
+    if (lines[0].text !== changedLines[0].text || !created) {
+      changes.push({ title: changedLines[0].text });
     }
+    // サムネイルの変更チェック
+    const oldDescriptions = lines.slice(1, 6).map((line) => line.text);
+    const newDescriptions = changedLines.slice(1, 6).map((lines) => lines.text);
+    if (oldDescriptions.join("\n") !== newDescriptions.join("\n")) {
+      changes.push({ descriptions: newDescriptions });
+    }
+
+    // serverにpushする
     parentId = await pushWithRetry(request, changes, {
       parentId,
       projectId,
@@ -79,6 +90,7 @@ export async function joinPageRoom(
       title,
       retry,
     });
+    created = true;
   }
 
   return {

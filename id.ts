@@ -19,6 +19,14 @@ export function createNewLineId(userId: string) {
   const rand = Math.floor(0xFFFFFE * Math.random()).toString(16);
   return `${zero(time).slice(-8)}${userId.slice(-6)}0000${zero(rand)}`;
 }
+export function getUnixTimeFromId(id: string) {
+  if (!isId(id)) throw SyntaxError(`"${id}" is an invalid id.`);
+
+  return parseInt(`0x${id.slice(0, 8)}`, 16);
+}
+export function isId(id: string) {
+  return /^[a-f\d]{24,32}$/.test(id);
+}
 
 export async function getPageIdAndCommitId(project: string, title: string) {
   const { id, commitId, persistent } = await getPage(project, title);

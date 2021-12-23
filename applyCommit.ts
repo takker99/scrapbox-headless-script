@@ -11,12 +11,13 @@ export interface ApplyCommitProp {
   userId: string;
 }
 export function applyCommit(
-  lines: Line[],
+  lines: readonly Line[],
   changes: CommitNotification["changes"],
   { updated, userId }: ApplyCommitProp,
 ) {
+  const newLines = [...lines];
   const getPos = (lineId: string) => {
-    const position = lines.findIndex(({ id }) => id === lineId);
+    const position = newLines.findIndex(({ id }) => id === lineId);
     if (position < 0) {
       throw RangeError(`No line whose id is ${lineId} found.`);
     }
@@ -34,19 +35,19 @@ export function applyCommit(
         created,
       };
       if (change._insert === "_end") {
-        lines.push(newLine);
+        newLines.push(newLine);
       } else {
-        lines.splice(getPos(change._insert), 0, newLine);
+        newLines.splice(getPos(change._insert), 0, newLine);
       }
     } else if ("_update" in change) {
       const position = getPos(change._update);
-      lines[position].text = change.lines.text;
-      lines[position].updated = typeof updated === "string"
+      newLines[position].text = change.lines.text;
+      newLines[position].updated = typeof updated === "string"
         ? getUnixTimeFromId(updated)
         : updated;
     } else if ("_delete" in change) {
-      lines.splice(getPos(change._delete), 1);
+      newLines.splice(getPos(change._delete), 1);
     }
   }
-  return lines;
+  return newLines;
 }

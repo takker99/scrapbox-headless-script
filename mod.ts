@@ -149,7 +149,12 @@ export async function* listenStream<EventName extends keyof ListenEventMap>(
     data: { projectId, pageId: null, projectUpdatesStream: true },
   });
   try {
-    yield* response(...events);
+    yield* response(
+      ...(events.length > 0 ? events : [
+        "projectUpdatesStream:event",
+        "projectUpdatesStream:commit",
+      ] as const),
+    );
   } finally {
     io.disconnect();
   }

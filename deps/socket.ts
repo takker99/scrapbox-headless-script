@@ -4,12 +4,13 @@ export type {
   Delete,
   DeleteCommit,
   InsertCommit,
+  ListenEventMap,
   Pin,
   ProjectUpdatesStreamCommit,
   ProjectUpdatesStreamEvent,
   UpdateCommit,
-} from "https://pax.deno.dev/takker99/scrapbox-userscript-websocket@0.1.1";
+} from "https://pax.deno.dev/takker99/scrapbox-userscript-websocket@0.1.2";
 export {
   socketIO,
   wrap,
-} from "https://pax.deno.dev/takker99/scrapbox-userscript-websocket@0.1.1";
+} from "https://pax.deno.dev/takker99/scrapbox-userscript-websocket@0.1.2";

@@ -2,6 +2,7 @@ import {
   Change,
   CommitNotification,
   Delete,
+  ListenEventMap,
   Pin,
   ProjectUpdatesStreamCommit,
   ProjectUpdatesStreamEvent,
@@ -135,9 +136,10 @@ export async function deletePage(
   }
 }
 
-export async function* listenStreamCommit(
+export async function* listenStream<EventName extends keyof ListenEventMap>(
   project: string,
-): AsyncGenerator<ProjectUpdatesStreamCommit, void, unknown> {
+  ...events: EventName[]
+) {
   const projectId = await getProjectId(project);
 
   const io = await socketIO();
@@ -147,28 +149,7 @@ export async function* listenStreamCommit(
     data: { projectId, pageId: null, projectUpdatesStream: true },
   });
   try {
-    for await (const data of response("projectUpdatesStream:commit")) {
-      yield data;
-    }
-  } finally {
-    io.disconnect();
-  }
-}
-export async function* listenStreamEvent(
-  project: string,
-): AsyncGenerator<ProjectUpdatesStreamEvent, void, unknown> {
-  const projectId = await getProjectId(project);
-
-  const io = await socketIO();
-  const { request, response } = wrap(io);
-  await request("socket.io-request", {
-    method: "room:join",
-    data: { projectId, pageId: null, projectUpdatesStream: true },
-  });
-  try {
-    for await (const data of response("projectUpdatesStream:event")) {
-      yield data;
-    }
+    yield* response(...events);
   } finally {
     io.disconnect();
   }

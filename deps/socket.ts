@@ -4,6 +4,7 @@ export type {
   Delete,
   DeleteCommit,
   InsertCommit,
+  ListenEventMap,
   Pin,
   ProjectUpdatesStreamCommit,
   ProjectUpdatesStreamEvent,

@@ -7,7 +7,7 @@ export interface ApplyCommitProp {
    *
    * UnixTimeか、UnixTimeを含んだidを渡す
    */
-  updated: number | string;
+  updated?: number | string;
   userId: string;
 }
 export function applyCommit(
@@ -44,7 +44,7 @@ export function applyCommit(
       newLines[position].text = change.lines.text;
       newLines[position].updated = typeof updated === "string"
         ? getUnixTimeFromId(updated)
-        : updated;
+        : updated ?? Math.round(new Date().getTime() / 1000);
     } else if ("_delete" in change) {
       newLines.splice(getPos(change._delete), 1);
     }

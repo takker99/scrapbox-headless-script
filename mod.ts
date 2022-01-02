@@ -68,7 +68,6 @@ export async function joinPageRoom(
   async function push(changes: Change[], retry = 3) {
     // 変更後のlinesを計算する
     const changedLines = applyCommit(lines, changes, {
-      updated: Math.round(new Date().getTime() / 1000),
       userId,
     });
     // タイトルの変更チェック

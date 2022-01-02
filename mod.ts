@@ -185,17 +185,14 @@ type PushCommitInit = {
 async function pushCommit(
   request: RequestFunc,
   changes: Change[] | [Delete] | [Pin],
-  { projectId, pageId, userId, parentId }: PushCommitInit,
+  commitInit: PushCommitInit,
 ) {
-  if (changes.length === 0) return { commitId: parentId };
+  if (changes.length === 0) return { commitId: commitInit.parentId };
   const res = await request("socket.io-request", {
     method: "commit",
     data: {
       kind: "page",
-      projectId,
-      parentId,
-      pageId,
-      userId,
+      ...commitInit,
       changes,
       cursor: null,
       freeze: true,
@@ -207,7 +204,7 @@ async function pushCommit(
 async function pushWithRetry(
   request: RequestFunc,
   changes: Change[] | [Delete] | [Pin],
-  { projectId, pageId, userId, parentId, project, title, retry = 3 }:
+  { project, title, retry = 3, parentId, ...commitInit }:
     & PushCommitInit
     & {
       project: string;
@@ -218,9 +215,7 @@ async function pushWithRetry(
   try {
     const res = await pushCommit(request, changes, {
       parentId,
-      projectId,
-      pageId,
-      userId,
+      ...commitInit,
     });
     parentId = res.commitId;
   } catch (_e) {
@@ -230,9 +225,7 @@ async function pushWithRetry(
         parentId = (await getPageIdAndCommitId(project, title)).commitId;
         const res = await pushCommit(request, changes, {
           parentId,
-          projectId,
-          pageId,
-          userId,
+          ...commitInit,
         });
         parentId = res.commitId;
         console.log("Success in retrying");

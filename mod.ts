@@ -110,8 +110,9 @@ export async function joinPageRoom(
     remove: (lineId: string) => push([{ _delete: lineId, lines: -1 }]),
     update: (text: string, lineId: string) =>
       push([{ _update: lineId, lines: { text } }]),
-    patch: async (update: (before: Line[]) => string[]) => {
-      const newLines = update(lines);
+    patch: async (update: (before: Line[]) => string[] | Promise<string[]>) => {
+      const pending = update(lines);
+      const newLines = pending instanceof Promise ? await pending : pending;
       const changes = [...diffToChanges(lines, newLines, { userId })];
       await push(changes);
     },

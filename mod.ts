@@ -17,6 +17,7 @@ import {
 } from "./id.ts";
 import { getPage } from "./fetch.ts";
 import { diffToChanges } from "./patch.ts";
+import { applyCommit } from "./applyCommit.ts";
 import type { Line } from "./deps/scrapbox.ts";
 export type {
   CommitNotification,
@@ -36,14 +37,18 @@ export async function joinPageRoom(
   project: string,
   title: string,
 ): Promise<JoinPageRoomResult> {
-  const [{ pageId, commitId: initialCommitId, persistent }, projectId, userId] =
-    await Promise.all([
-      getPageIdAndCommitId(project, title),
-      getProjectId(project),
-      getUserId(),
-    ]);
-  let parentId = initialCommitId;
+  const [
+    { commitId, lines: _lines, id: pageId, persistent },
+    projectId,
+    userId,
+  ] = await Promise.all([
+    getPage(project, title),
+    getProjectId(project),
+    getUserId(),
+  ]);
+  let parentId = commitId;
   let created = persistent;
+  let lines = _lines;
 
   const io = await socketIO();
   const { request, response } = wrap(io);
@@ -54,23 +59,30 @@ export async function joinPageRoom(
 
   // subscribe the latest commit id
   (async () => {
-    for await (const { id } of response("commit")) {
+    for await (const { id, changes } of response("commit")) {
       parentId = id;
+      lines = applyCommit(lines, changes, { updated: id, userId });
     }
   })();
 
   async function push(changes: Change[], retry = 3) {
-    // 空ページのときはtitleを先にcommitしておく
-    if (!created) {
-      const res = await pushCommit(request, [{ title }], {
-        parentId,
-        projectId,
-        pageId,
-        userId,
-      });
-      parentId = res.commitId;
-      created = true;
+    // 変更後のlinesを計算する
+    const changedLines = applyCommit(lines, changes, {
+      userId,
+    });
+    // タイトルの変更チェック
+    // 空ページの場合もタイトル変更commitを入れる
+    if (lines[0].text !== changedLines[0].text || !created) {
+      changes.push({ title: changedLines[0].text });
     }
+    // サムネイルの変更チェック
+    const oldDescriptions = lines.slice(1, 6).map((line) => line.text);
+    const newDescriptions = changedLines.slice(1, 6).map((lines) => lines.text);
+    if (oldDescriptions.join("\n") !== newDescriptions.join("\n")) {
+      changes.push({ descriptions: newDescriptions });
+    }
+
+    // serverにpushする
     parentId = await pushWithRetry(request, changes, {
       parentId,
       projectId,
@@ -80,6 +92,9 @@ export async function joinPageRoom(
       title,
       retry,
     });
+    // pushに成功したら、localにも変更を反映する
+    created = true;
+    lines = changedLines;
   }
 
   return {
@@ -94,9 +109,8 @@ export async function joinPageRoom(
     update: (text: string, lineId: string) =>
       push([{ _update: lineId, lines: { text } }]),
     patch: async (update: (before: Line[]) => string[]) => {
-      const oldLines = (await getPage(project, title)).lines;
-      const newLines = update(oldLines);
-      const changes = [...diffToChanges(oldLines, newLines, { userId })];
+      const newLines = update(lines);
+      const changes = [...diffToChanges(lines, newLines, { userId })];
       await push(changes);
     },
     listenPageUpdate: () => response("commit"),
@@ -171,17 +185,14 @@ type PushCommitInit = {
 async function pushCommit(
   request: RequestFunc,
   changes: Change[] | [Delete] | [Pin],
-  { projectId, pageId, userId, parentId }: PushCommitInit,
+  commitInit: PushCommitInit,
 ) {
-  if (changes.length === 0) return { commitId: parentId };
+  if (changes.length === 0) return { commitId: commitInit.parentId };
   const res = await request("socket.io-request", {
     method: "commit",
     data: {
       kind: "page",
-      projectId,
-      parentId,
-      pageId,
-      userId,
+      ...commitInit,
       changes,
       cursor: null,
       freeze: true,
@@ -193,7 +204,7 @@ async function pushCommit(
 async function pushWithRetry(
   request: RequestFunc,
   changes: Change[] | [Delete] | [Pin],
-  { projectId, pageId, userId, parentId, project, title, retry = 3 }:
+  { project, title, retry = 3, parentId, ...commitInit }:
     & PushCommitInit
     & {
       project: string;
@@ -204,9 +215,7 @@ async function pushWithRetry(
   try {
     const res = await pushCommit(request, changes, {
       parentId,
-      projectId,
-      pageId,
-      userId,
+      ...commitInit,
     });
     parentId = res.commitId;
   } catch (_e) {
@@ -216,9 +225,7 @@ async function pushWithRetry(
         parentId = (await getPageIdAndCommitId(project, title)).commitId;
         const res = await pushCommit(request, changes, {
           parentId,
-          projectId,
-          pageId,
-          userId,
+          ...commitInit,
         });
         parentId = res.commitId;
         console.log("Success in retrying");

@@ -5,11 +5,18 @@ import { getUnixTimeFromId } from "./id.ts";
 export interface ApplyCommitProp {
   /** changesの作成日時
    *
-   * UnixTimeか、UnixTimeを含んだidを渡す
+   * UnixTimeか、UnixTimeを含んだidを渡す。
+   * 何も指定されなかったら、実行時の時刻を用いる
    */
   updated?: number | string;
-  userId: string;
+  /** user id */ userId: string;
 }
+
+/** メタデータを含んだ行にcommitsを適用する
+ *
+ * @param lines commitsを適用する行
+ * @param changes 適用するcommits
+ */
 export function applyCommit(
   lines: readonly Line[],
   changes: CommitNotification["changes"],

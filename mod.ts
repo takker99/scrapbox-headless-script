@@ -26,13 +26,45 @@ export type {
 };
 
 export interface JoinPageRoomResult {
+  /** 特定の位置にテキストを挿入する
+   *
+   * @param text - 挿入したいテキスト (複数行も可)
+   * @param beforeId - この行IDが指し示す行の上に挿入する。末尾に挿入する場合は`_end`を指定する
+   */
   insert: (text: string, beforeId: string) => Promise<void>;
+  /** 特定の行を削除する
+   *
+   * @param lineId 削除したい行の行ID
+   */
   remove: (lineId: string) => Promise<void>;
+  /** 特定の位置のテキストを書き換える
+   *
+   * @param text - 書き換え後のテキスト (改行は不可)
+   * @param lineId - 書き換えたい行の行ID
+   */
   update: (text: string, lineId: string) => Promise<void>;
+
+  /** ページ全体を書き換える
+   *
+   * `update()`で現在の本文から書き換え後の本文を作ってもらう。
+   * serverには書き換え前後の差分だけを送信する
+   *
+   * @param update 書き換え後の本文を作成する函数。引数には現在の本文が渡される
+   */
   patch: (update: (before: Line[]) => string[]) => Promise<void>;
+  /** ページの更新情報を購読する */
   listenPageUpdate: () => AsyncGenerator<CommitNotification, void, unknown>;
+  /** ページの操作を終了する。これを呼び出すと他のmethodsは使えなくなる
+   *
+   * 内部的にはwebsocketを切断している
+   */
   cleanup: () => void;
 }
+/** 指定したページを操作する
+ *
+ * @param project 操作したいページのproject
+ * @param title 操作したいページのタイトル
+ */
 export async function joinPageRoom(
   project: string,
   title: string,
@@ -122,6 +154,12 @@ export async function joinPageRoom(
     },
   };
 }
+
+/** 指定したページを削除する
+ *
+ * @param project 削除したいページのproject
+ * @param title 削除したいページのタイトル
+ */
 export async function deletePage(
   project: string,
   title: string,
@@ -153,6 +191,11 @@ export async function deletePage(
   }
 }
 
+/** Streamを購読する
+ *
+ * @param project 購読したいproject
+ * @param events 購読したいeventの種類。複数種類を指定できる
+ */
 export async function* listenStream<EventName extends keyof ListenEventMap>(
   project: string,
   ...events: EventName[]

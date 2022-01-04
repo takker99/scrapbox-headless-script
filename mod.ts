@@ -46,9 +46,6 @@ export async function joinPageRoom(
     getProjectId(project),
     getUserId(),
   ]);
-  let parentId = commitId;
-  let created = persistent;
-  let lines = _lines;
 
   const io = await socketIO();
   const { request, response } = wrap(io);
@@ -57,7 +54,12 @@ export async function joinPageRoom(
     data: { projectId, pageId, projectUpdatesStream: false },
   });
 
-  // subscribe the latest commit id
+  // 接続したページの情報
+  /** HEADのcommit id */ let parentId = commitId;
+  /** 中身のあるページかどうか */ let created = persistent;
+  /** ページ本文 */ let lines = _lines;
+
+  // subscribe the latest commit
   (async () => {
     for await (const { id, changes } of response("commit")) {
       parentId = id;

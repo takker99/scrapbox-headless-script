@@ -198,7 +198,6 @@ export async function joinPageRoom(
             parentId = page.commitId;
             created = page.persistent;
             lines = page.lines;
-            break;
           } catch (e: unknown) {
             throw e;
           }

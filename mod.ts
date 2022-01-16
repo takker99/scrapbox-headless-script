@@ -143,10 +143,67 @@ export async function joinPageRoom(
     update: (text: string, lineId: string) =>
       push([{ _update: lineId, lines: { text } }]),
     patch: async (update: (before: Line[]) => string[] | Promise<string[]>) => {
-      const pending = update(lines);
-      const newLines = pending instanceof Promise ? await pending : pending;
-      const changes = [...diffToChanges(lines, newLines, { userId })];
-      await push(changes);
+      const tryPush = async () => {
+        const pending = update(lines);
+        const newLines = pending instanceof Promise ? await pending : pending;
+        const changes: Change[] = [
+          ...diffToChanges(lines, newLines, { userId }),
+        ];
+
+        // 変更後のlinesを計算する
+        const changedLines = applyCommit(lines, changes, {
+          userId,
+        });
+        // タイトルの変更チェック
+        // 空ページの場合もタイトル変更commitを入れる
+        if (lines[0].text !== changedLines[0].text || !created) {
+          changes.push({ title: changedLines[0].text });
+        }
+        // サムネイルの変更チェック
+        const oldDescriptions = lines.slice(1, 6).map((line) => line.text);
+        const newDescriptions = changedLines.slice(1, 6).map((lines) =>
+          lines.text
+        );
+        if (oldDescriptions.join("\n") !== newDescriptions.join("\n")) {
+          changes.push({ descriptions: newDescriptions });
+        }
+
+        // pushする
+        const { commitId } = await pushCommit(request, changes, {
+          parentId,
+          projectId,
+          pageId,
+          userId,
+        });
+
+        // pushに成功したら、localにも変更を反映する
+        parentId = commitId;
+        created = true;
+        lines = changedLines;
+      };
+
+      for (let i = 0; i < 3; i++) {
+        try {
+          await tryPush();
+          break;
+        } catch (_e: unknown) {
+          if (i === 2) {
+            throw Error("Faild to retry pushing.");
+          }
+          console.log(
+            "Faild to push a commit. Retry after pulling new commits",
+          );
+          try {
+            const page = await getPage(project, title);
+            parentId = page.commitId;
+            created = page.persistent;
+            lines = page.lines;
+            break;
+          } catch (e: unknown) {
+            throw e;
+          }
+        }
+      }
     },
     listenPageUpdate: () => response("commit"),
     cleanup: () => {

@@ -170,7 +170,7 @@ export async function pin(
   let parentId = initialCommitId;
 
   // 既にピン留めされている場合は何もしない
-  if (pin > 0 && !persistent && !(option?.create ?? false)) return;
+  if (pin > 0 || (!persistent && !(option?.create ?? false))) return;
 
   const init = { projectId, pageId, userId, project, title };
   const io = await socketIO();

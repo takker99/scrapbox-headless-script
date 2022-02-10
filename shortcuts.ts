@@ -1,4 +1,4 @@
-import { Change, Pin, socketIO, TitleCommit, wrap } from "./deps/socket.ts";
+import { Change, socketIO, wrap } from "./deps/socket.ts";
 import { getProjectId, getUserId } from "./id.ts";
 import { diffToChanges } from "./patch.ts";
 import { applyCommit } from "./applyCommit.ts";

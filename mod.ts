@@ -15,9 +15,9 @@ import {
   getProjectId,
   getUserId,
 } from "./id.ts";
-import { getPage } from "./fetch.ts";
 import { diffToChanges } from "./patch.ts";
 import { applyCommit } from "./applyCommit.ts";
+import { getPage } from "./deps/scrapbox-std.ts";
 import type { Line } from "./deps/scrapbox.ts";
 export type {
   CommitNotification,
@@ -70,14 +70,20 @@ export async function joinPageRoom(
   title: string,
 ): Promise<JoinPageRoomResult> {
   const [
-    { commitId, lines: _lines, id: pageId, persistent },
+    page,
     projectId,
     userId,
   ] = await Promise.all([
-    getPage(project, title),
+    ensureEditablePage(project, title),
     getProjectId(project),
     getUserId(),
   ]);
+
+  // 接続したページの情報
+  let parentId = page.commitId;
+  let created = page.persistent;
+  let lines = page.lines;
+  const pageId = page.id;
 
   const io = await socketIO();
   const { request, response } = wrap(io);
@@ -85,11 +91,6 @@ export async function joinPageRoom(
     method: "room:join",
     data: { projectId, pageId, projectUpdatesStream: false },
   });
-
-  // 接続したページの情報
-  /** HEADのcommit id */ let parentId = commitId;
-  /** 中身のあるページかどうか */ let created = persistent;
-  /** ページ本文 */ let lines = _lines;
 
   // subscribe the latest commit
   (async () => {
@@ -194,7 +195,7 @@ export async function joinPageRoom(
             "Faild to push a commit. Retry after pulling new commits",
           );
           try {
-            const page = await getPage(project, title);
+            const page = await ensureEditablePage(project, title);
             parentId = page.commitId;
             created = page.persistent;
             lines = page.lines;
@@ -220,12 +221,15 @@ export async function deletePage(
   project: string,
   title: string,
 ): Promise<void> {
-  const [{ pageId, commitId: initialCommitId, persistent }, projectId, userId] =
-    await Promise.all([
-      getPageIdAndCommitId(project, title),
-      getProjectId(project),
-      getUserId(),
-    ]);
+  const [
+    { id: pageId, commitId: initialCommitId, persistent },
+    projectId,
+    userId,
+  ] = await Promise.all([
+    ensureEditablePage(project, title),
+    getProjectId(project),
+    getUserId(),
+  ]);
   let parentId = initialCommitId;
 
   if (!persistent) return;
@@ -339,4 +343,14 @@ async function pushWithRetry(
     throw Error("Faild to retry pushing.");
   }
   return parentId;
+}
+
+async function ensureEditablePage(project: string, title: string) {
+  const result = await getPage(project, title);
+
+  // TODO: 編集不可なページはStream購読だけ提供する
+  if (!result.ok) {
+    throw new Error(`You have no privilege of editing "/${project}/${title}".`);
+  }
+  return result.value;
 }

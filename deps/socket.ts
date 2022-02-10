@@ -8,6 +8,7 @@ export type {
   Pin,
   ProjectUpdatesStreamCommit,
   ProjectUpdatesStreamEvent,
+  TitleCommit,
   UpdateCommit,
 } from "https://pax.deno.dev/takker99/scrapbox-userscript-websocket@0.1.2";
 export {

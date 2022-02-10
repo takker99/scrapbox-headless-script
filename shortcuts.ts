@@ -1,4 +1,4 @@
-import { Change, Pin, socketIO, TitleCommit, wrap } from "./deps/socket.ts";
+import { Change, socketIO, wrap } from "./deps/socket.ts";
 import { getProjectId, getUserId } from "./id.ts";
 import { diffToChanges } from "./patch.ts";
 import { applyCommit } from "./applyCommit.ts";
@@ -72,8 +72,6 @@ export async function patch(
   let lines = page.lines;
   let parentId = page.commitId;
   const pageId = page.id;
-
-  if (!persistent) return;
 
   const io = await socketIO();
   try {
@@ -172,7 +170,7 @@ export async function pin(
   let parentId = initialCommitId;
 
   // 既にピン留めされている場合は何もしない
-  if (pin > 0 && !persistent && !(option?.create ?? false)) return;
+  if (pin > 0 || (!persistent && !(option?.create ?? false))) return;
 
   const init = { projectId, pageId, userId, project, title };
   const io = await socketIO();

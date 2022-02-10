@@ -73,8 +73,6 @@ export async function patch(
   let parentId = page.commitId;
   const pageId = page.id;
 
-  if (!persistent) return;
-
   const io = await socketIO();
   try {
     const { request } = wrap(io);

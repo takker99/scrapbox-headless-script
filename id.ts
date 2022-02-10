@@ -1,5 +1,4 @@
 import { getProfile, getProject } from "./deps/scrapbox-std.ts";
-import { getPage } from "./fetch.ts";
 
 /** cached user ID */
 let userId: string | undefined;
@@ -46,9 +45,4 @@ export function getUnixTimeFromId(id: string) {
 }
 export function isId(id: string) {
   return /^[a-f\d]{24,32}$/.test(id);
-}
-
-export async function getPageIdAndCommitId(project: string, title: string) {
-  const { id, commitId, persistent } = await getPage(project, title);
-  return { pageId: id, commitId, persistent };
 }

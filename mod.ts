@@ -9,12 +9,7 @@ import {
   socketIO,
   wrap,
 } from "./deps/socket.ts";
-import {
-  createNewLineId,
-  getPageIdAndCommitId,
-  getProjectId,
-  getUserId,
-} from "./id.ts";
+import { createNewLineId, getProjectId, getUserId } from "./id.ts";
 import { diffToChanges } from "./patch.ts";
 import { applyCommit } from "./applyCommit.ts";
 import { getPage } from "./deps/scrapbox-std.ts";
@@ -422,8 +417,9 @@ async function pushWithRetry(
   } catch (_e) {
     console.log("Faild to push a commit. Retry after pulling new commits");
     for (let i = 0; i < retry; i++) {
+      const { commitId } = await ensureEditablePage(project, title);
+      parentId = commitId;
       try {
-        parentId = (await getPageIdAndCommitId(project, title)).commitId;
         const res = await pushCommit(request, changes, {
           parentId,
           ...commitInit,

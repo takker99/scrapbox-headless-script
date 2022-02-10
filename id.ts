@@ -1,13 +1,33 @@
-import type { MemberProject, UserResponse } from "./deps/scrapbox.ts";
+import { getProfile, getProject } from "./deps/scrapbox-std.ts";
 import { getPage } from "./fetch.ts";
 
+/** cached user ID */
+let userId: string | undefined;
 export async function getUserId() {
-  const res = await fetch("https://scrapbox.io/api/users/me");
-  const json = (await res.json()) as UserResponse;
-  if (json.isGuest) {
+  if (userId !== undefined) return userId;
+
+  const user = await getProfile();
+  if (user.isGuest) {
     throw new Error("this script can only be executed by Logged in users");
   }
-  return json.id;
+  userId = user.id;
+  return userId;
+}
+
+/** cached pairs of project name and project id */
+const projectMap = new Map<string, string>();
+export async function getProjectId(project: string) {
+  const cachedId = projectMap.get(project);
+  if (cachedId !== undefined) return cachedId;
+
+  const result = await getProject(project);
+  if (!result.ok) {
+    const { name, message } = result.value;
+    throw new Error(`${name} ${message}`);
+  }
+  const { id } = result.value;
+  projectMap.set(project, id);
+  return id;
 }
 
 function zero(n: string) {
@@ -31,10 +51,4 @@ export function isId(id: string) {
 export async function getPageIdAndCommitId(project: string, title: string) {
   const { id, commitId, persistent } = await getPage(project, title);
   return { pageId: id, commitId, persistent };
-}
-
-export async function getProjectId(project: string) {
-  const res = await fetch(`https://scrapbox.io/api/projects/${project}`);
-  const json = (await res.json()) as MemberProject;
-  return json.id;
 }
